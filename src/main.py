@@ -8,7 +8,6 @@ Ames Housing データセットを使用した住宅価格の分析と予測を�
 import flet as ft
 
 import pandas as pd
-from sklearn.datasets import fetch_openml
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 
