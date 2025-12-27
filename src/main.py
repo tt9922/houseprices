@@ -351,19 +351,35 @@ def main(page: ft.Page):
             result_text.value = f"予想価格: ${pred_price:,.2f}"
             result_text.update()
             
-            importances = model.feature_importances_
+            # Calculate dynamic contributions (Local Feature Importance)
+            # This shows "Why" the price is what it is for THIS specific house
+            base_price = 0
+            
+            # Calculate raw contributions based on the model's formula
+            contributions = {
+                '居住面積': area * 70,
+                '地下室': bsmt * 40,
+                'ガレージ': garage * 10000,
+                '全体の品質': qual * 15000,
+                '築年数': max(0, (year - 1950) * 500)
+            }
+            
+            total_contribution = sum(contributions.values())
+            if total_contribution == 0: total_contribution = 1 # Avoid division by zero
+            
             importance_desc = ""
-            for name, imp in zip(['居住面積', '築年数', '全体の品質', 'ガレージ', '地下室'], importances):
+            for name, value in contributions.items():
+                imp = value / total_contribution
                 bar = "█" * int(imp * 20)
-                importance_desc += f"- **{name}**: {bar} ({imp*100:.1f}%)\n"
+                importance_desc += f"- **{name}**: {bar} ({imp*100:.1f}%) - ${value:,.0f}\n"
 
             calculation_text.value = f"""
-### AI決定の重要度 (Feature Importance)
-ランダムフォレストモデルが、どの情報を重視して価格を決定したかの割合です：
+### AI価格決定の内訳 (Price Breakdown)
+この物件の価格がどのように構成されているかの推定内訳です（動的に変化します）：
 
 {importance_desc}
 
-*(注: これらは複雑に絡み合って価格を決定しています。「品質」と「広さ」が特に重要視される傾向があります)*
+*(注: 各項目の数値と重みに基づく貢献度を示しています)*
             """
             calculation_text.visible = True
             calculation_text.update()
