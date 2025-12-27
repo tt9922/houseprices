@@ -16,11 +16,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.27.1'
-        channel: 'stable'
-    
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
@@ -32,8 +27,8 @@ jobs:
 
     - name: Flet Build
       run: |
-        # Explicitly build the "src" directory
-        flet build web src --output dist --base-url "/${{ github.event.repository.name }}/"
+        # Explicitly build the "src" directory and pipe 'yes' to accept SDK installation
+        yes | flet build web src --output dist --base-url "/${{ github.event.repository.name }}/"
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
