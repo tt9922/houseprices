@@ -27,8 +27,9 @@ jobs:
 
     - name: Flet Build
       run: |
-        # Explicitly build the "src" directory and pipe 'yes' to accept SDK installation
-        yes | flet build web src --output dist --base-url "/${{ github.event.repository.name }}/"
+        # Build from root using pyproject.toml settings
+        # Add hash routing for GitHub Pages compatibility
+        yes | flet build web --output dist --base-url "/${{ github.event.repository.name }}/" --route-url-strategy hash
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
