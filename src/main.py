@@ -288,7 +288,7 @@ def main(page: ft.Page):
             labels_size=40,
         ),
         horizontal_grid_lines=ft.ChartGridLines(color="grey300", width=1, dash_pattern=[3, 3]),
-        tooltip_bgcolor=ft.colors.with_opacity(0.8, "grey900"),
+        tooltip_bgcolor="grey900",
         max_y=1.0,
         min_y=-1.0,
         expand=True,
