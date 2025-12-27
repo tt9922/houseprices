@@ -23,19 +23,12 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        # Install flet and other dependencies needed for the build script or app analysis
-        pip install flet pandas scikit-learn
+        pip install flet
 
     - name: Flet Build
       run: |
-        # Build the specific app directory "src"
-        # We output to "dist" and set base-url to the repository name
-        # If pyproject.toml is in root, we might need to be careful.
-        # Running flet build web from root and pointing to src is safer if [tool.flet.app] is set?
-        # Actually pyproject.toml [tool.flet.app] path = "src".
-        # So we can just run flet build web in the root.
-        
-        flet build web --output dist --base-url "/${{ github.event.repository.name }}/"
+        # Explicitly build the "src" directory
+        flet build web src --output dist --base-url "/${{ github.event.repository.name }}/"
 
     - name: Upload artifact
       uses: actions/upload-pages-artifact@v3
