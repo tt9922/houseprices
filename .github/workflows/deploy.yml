@@ -1,0 +1,54 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        # Install flet and other dependencies needed for the build script or app analysis
+        pip install flet pandas scikit-learn
+
+    - name: Flet Build
+      run: |
+        # Build the specific app directory "src"
+        # We output to "dist" and set base-url to the repository name
+        # If pyproject.toml is in root, we might need to be careful.
+        # Running flet build web from root and pointing to src is safer if [tool.flet.app] is set?
+        # Actually pyproject.toml [tool.flet.app] path = "src".
+        # So we can just run flet build web in the root.
+        
+        flet build web --output dist --base-url "/${{ github.event.repository.name }}/"
+
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'dist'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
