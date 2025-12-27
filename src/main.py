@@ -1,46 +1,29 @@
-"""
-Ames Housing データセットを使用した住宅価格の分析と予測を行うFletアプリケーション。
-
-このモジュールは、OpenMLから住宅データを取得（またはキャッシュから読み込み）、
-データの可視化、相関分析、欠損値の確認、そしてランダムフォレストを用いた
-価格予測機能を提供するGUIアプリケーションのエントリーポイントです。
-"""
 import flet as ft
-
 import pandas as pd
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
-
 import os
 
 # 1. 住宅価格データセット（Ames Housing）を読み込む
 CACHE_FILE = "assets/house_prices.csv"
 
-# Check if running in Flet (assets dir is usually relative to main.py or configured assets dir)
-# For Flet web, accessing assets usually works via direct path if configured.
-# However, pandas read_csv needs a file path.
-# When deployed to web, we can't easily "read" a file from a path like a local OS.
-# Ideally, we should use standard open if it's bundled, or if it's a web asset, we might need to fetch it via HTTP if not available as local file.
-# But for now, let's assume it's available in the local file system for the python runtime (Pyodide uses a virtual FS).
-# Use absolute path relative to this script for robustness if possible, or just relative.
-
+# Check if running in Flet
+import sys
 if os.path.exists(CACHE_FILE):
     print(f"Loading from asset: {CACHE_FILE}")
     df_house = pd.read_csv(CACHE_FILE)
 else:
     # Fallback or error
     print(f"Asset not found: {CACHE_FILE}")
-    # In a real web app, might need to fetch from URL if not mapped to file system
-    # But Flet packager usually puts assets in the bundle.
-    # Try absolute path just in case
-    import sys
     base_path = os.path.dirname(os.path.abspath(__file__))
     abs_path = os.path.join(base_path, "assets", "house_prices.csv")
     if os.path.exists(abs_path):
          print(f"Loading from absolute path: {abs_path}")
          df_house = pd.read_csv(abs_path)
     else:
-         raise FileNotFoundError(f"Could not find {CACHE_FILE} or {abs_path}")
+         # Try loading from relative path in web build structure if needed, or fail
+         try:
+             df_house = pd.read_csv("house_prices.csv")
+         except:
+             raise FileNotFoundError(f"Could not find {CACHE_FILE} or {abs_path}")
 
 # 2. データの先頭5行を表示
 print("--- 住宅データの先頭5行 ---")
@@ -225,119 +208,6 @@ def main(page: ft.Page):
         page (ft.Page): Fletのページオブジェクト。UIコンポーネントを追加するキャンバスとして機能します。
     """
     page.title = "Ames Housing Data"
-    page.title = "Ames Housing Data"
-
-
-
-    # Create DataTable
-    # Columns
-    columns = [
-        ft.DataColumn(ft.Text(f"{col}\n({COLUMN_TRANSLATIONS[col]})" if col in COLUMN_TRANSLATIONS else col))
-        for col in df_house.columns
-    ]
-
-    # Rows (Show first 50 rows for performance)
-    rows = []
-    for _, row in df_house.head(50).iterrows():
-        cells = []
-        for val in row:
-            val_str = str(val)
-            if val_str in VALUE_TRANSLATIONS:
-                 val_str = f"{val_str}\n({VALUE_TRANSLATIONS[val_str]})"
-            cells.append(ft.DataCell(ft.Text(val_str)))
-        rows.append(ft.DataRow(cells=cells))
-
-    table = ft.DataTable(
-        columns=columns,
-        rows=rows,
-        border=ft.border.all(1, "grey"),
-        vertical_lines=ft.border.all(1, "grey"),
-        horizontal_lines=ft.border.all(1, "grey"),
-    )
-
-    # --- Correlation Analysis ---
-    # Calculate correlations with SalePrice
-    # numeric_only=True is required for recent pandas versions if there are non-numeric columns
-    corr_matrix = df_house.corr(numeric_only=True)
-    sale_price_corr = corr_matrix['SalePrice'].sort_values(ascending=False)
-    
-    # Filter out SalePrice itself (correlation 1.0) and take top 10
-    top_corr = sale_price_corr.drop('SalePrice').head(10)
-
-    # Prepare chart data groups
-    chart_groups = []
-    for i, (col, score) in enumerate(top_corr.items()):
-        col_label = f"{col}\n({COLUMN_TRANSLATIONS.get(col, col)})"
-        chart_groups.append(
-            ft.BarChartGroup(
-                x=i,
-                bar_rods=[
-                    ft.BarChartRod(
-                        from_y=0,
-                        to_y=score,
-                        width=40,
-                        color="amber" if score > 0.7 else "blue",
-                        tooltip=f"{col_label}: {score:.3f}",
-                        border_radius=0,
-                    ),
-                ],
-            )
-        )
-
-    chart = ft.BarChart(
-        bar_groups=chart_groups,
-        border=ft.border.all(1, "grey400"),
-        left_axis=ft.ChartAxis(
-            labels_size=40, title=ft.Text("Correlation"), title_size=40
-        ),
-        bottom_axis=ft.ChartAxis(
-            labels=[
-                ft.ChartAxisLabel(
-                    value=i, label=ft.Container(ft.Text(col[:10], size=10), padding=10)
-                ) for i, (col, _) in enumerate(top_corr.items())
-            ],
-            labels_size=40,
-        ),
-        horizontal_grid_lines=ft.ChartGridLines(
-            color="grey300", width=1, dash_pattern=[3, 3]
-        ),
-        tooltip_bgcolor=ft.colors.with_opacity(0.8, "grey900") if hasattr(ft, "colors") else "grey900", # Fallback logic just in case
-        max_y=1.0,
-        min_y=-1.0, # Correlations can be negative
-        expand=True,
-    )
-    
-    # Legend/Explanation
-    analysis_text = ft.ListView(
-        [
-            ft.Text("SalePrice (販売価格) と相関が高い上位10項目を表示しています。", size=20, weight=ft.FontWeight.BOLD),
-             *[
-                 ft.Text(f"{i+1}. {col} ({COLUMN_TRANSLATIONS.get(col, col)}): {score:.3f}") 
-                 for i, (col, score) in enumerate(top_corr.items())
-             ]
-        ],
-        expand=True
-    )
-
-    explanation_text = ft.Markdown(
-        """
-### 分析手法 (Methodology)
-1. **相関係数の算出**: データセット内の全ての数値項目について、販売価格 (`SalePrice`) との**ピアソン相関係数**を計算しました。
-2. **相関の強さ**: 相関係数は `-1.0` から `1.0` の範囲の値をとり、`1.0` に近いほど「一方が増えればもう一方も増える」という強い関係を示します。
-3. **項目の選定**: ここでは、`SalePrice` 自身を除いた中で、最も相関が強かった上位10項目を自動的に抽出して表示しています。
-        """
-    )
-    
-    # --- AI Prediction Model (Advanced: Random Forest) ---
-    # Using multiple features: Size, Age, Quality, Garage, Basement
-    features = ['GrLivArea', 'YearBuilt', 'OverallQual', 'GarageCars', 'TotalBsmtSF']
-    pred_data = df_house[features + ['SalePrice']].dropna()
-    X = pred_data[features]
-    y = pred_data['SalePrice']
-    
-    # Random Forest Model
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
-    model.fit(X, y)
     
     # Prediction UI
     # Existing Inputs
